@@ -1,0 +1,29 @@
+streamlit
+biopython
+pandas
+matplotlib
+```
+
+4. Haz clic en **"Commit changes"**
+
+---
+
+### **Paso 3: Limpiar caché y reiniciar**
+
+1. Ve a tu app en Streamlit Cloud (donde está el error)
+2. Abajo a la derecha, haz clic en **"Manage app"**
+3. En el menú que se abre, busca el botón **⋮** (tres puntos) o **"Settings"**
+4. Haz clic en **"Reboot app"** o **"Clear cache and reboot"**
+5. Espera 3-5 minutos
+
+---
+
+## ✅ Archivos finales que debes tener:
+
+Tu repositorio debe verse así:
+```
+ram-detector/
+├── app_ram.py              ← El código de Streamlit
+├── requirements.txt        ← Las 4 librerías (SIN versiones)
+├── packages.txt            ← ¡NUEVO! Dependencias del sistema
+└── test_sequence.fasta     ← Secuencia de prueba
