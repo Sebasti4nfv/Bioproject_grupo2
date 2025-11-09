@@ -12,12 +12,56 @@
       <p><strong>Resumen:</strong> {{ job.raw_summary }}</p>
       <p><strong>Fecha:</strong> {{ job.created_at|date:"d/m/Y H:i" }}</p>
 
+      {% if job.raw_summary %}
+        <pre style="background:#f8f9fa; padding:10px; border-radius:5px; white-space:pre-wrap;">{{ job.raw_summary }}</pre>
+      {% endif %}
+      {% if job.detected_genes.all %}
+        <h5 class="mt-4">🧬 Genes RAM Detectados</h5>
+        <div class="table-responsive">
+          <table class="table table-striped align-middle">
+            <thead class="table-dark">
+              <tr>
+                <th>Gen RAM</th>
+                <th>Coincidencias</th>
+                <th>Identidad (%)</th>
+                <th>Cobertura (%)</th>
+                <th>Clasificación</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for g in job.detected_genes.all %}
+              <tr>
+                <td><strong>{{ g.gene_name }}</strong></td>
+                <td>{{ g.matches }}</td>
+                <td>{{ g.identity|floatformat:2 }}</td>
+                <td>{{ g.coverage|floatformat:2 }}</td>
+                <td>
+                  {% if g.classification == "Alta resistencia" %}
+                    <span class="badge bg-danger">{{ g.classification }}</span>
+                  {% elif g.classification == "Resistencia moderada" %}
+                    <span class="badge bg-warning text-dark">{{ g.classification }}</span>
+                  {% elif g.classification == "Baja resistencia" %}
+                    <span class="badge bg-info text-dark">{{ g.classification }}</span>
+                  {% else %}
+                    <span class="badge bg-success">{{ g.classification }}</span>
+                  {% endif %}
+                </td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="alert alert-secondary mt-3 text-center">
+          No se detectaron genes RAM en esta secuencia.
+        </div>
+      {% endif %}
       {% if job.status == "DONE" %}
         <div class="alert alert-success mt-3">✅ Análisis completado correctamente.</div>
       {% else %}
         <div class="alert alert-danger mt-3">❌ Hubo un error: {{ job.raw_summary }}</div>
       {% endif %}
-
+      
       <div class="text-center mt-4">
         <a href="{% url 'sequence_detail' job.sequence.pk %}" class="btn btn-primary">⬅ Volver al detalle</a>
         <a href="{% url 'dashboard' %}" class="btn btn-secondary">🏠 Dashboard</a>

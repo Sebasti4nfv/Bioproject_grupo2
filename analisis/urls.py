@@ -12,4 +12,5 @@ urlpatterns = [
     path('historial/export.csv', views.export_historial_csv, name='export_historial_csv'),
         # ✅ Exportar PDF
     path('exportar-pdf/<int:pk>/', views.exportar_pdf, name='exportar_pdf'),
+
 ]

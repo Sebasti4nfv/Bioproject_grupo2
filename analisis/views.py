@@ -7,9 +7,10 @@ from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from .forms import SequenceUploadForm
 from .models import Sequence, AnalysisJob
-from .services.analyzers import analyze_demo
+from .services.analyzers import analyze_realistic
 from .services.reports import generar_pdf
 import csv
+
 
 @login_required
 def dashboard(request):
@@ -50,11 +51,17 @@ def sequence_detail(request, pk):
 
 @login_required
 def run_analysis(request, pk):
+    """
+    Ejecuta el análisis bioinformático principal (modo REAL).
+    Basado en librerías de Biopython y patrones de genes RAM simulados.
+    """
     seq = get_object_or_404(Sequence, pk=pk, owner=request.user)
-    job = AnalysisJob.objects.create(sequence=seq, mode="DEMO", status="RUNNING")
+    job = AnalysisJob.objects.create(sequence=seq, mode="REAL", status="RUNNING")
 
     try:
-        length, identity, coverage, summary = analyze_demo(seq.fasta_file.path)
+        from .services.analyzers import analyze_realistic
+        length, identity, coverage, summary, gene_results = analyze_realistic(seq.fasta_file.path)
+
         seq.length_bp = length
         seq.save()
 
@@ -64,14 +71,40 @@ def run_analysis(request, pk):
         job.status = "DONE"
         job.save()
 
+        # 🔹 Guardar los genes detectados en la BD
+        from .models import DetectedGene
+        for g in gene_results:
+            gene_name, matches, ident, cov = g
+            # Clasificación básica según identidad promedio
+            if ident >= 90:
+                level = "Alta resistencia"
+            elif ident >= 60:
+                level = "Resistencia moderada"
+            elif ident >= 30:
+                level = "Baja resistencia"
+            else:
+                level = "Sin resistencia"
+            DetectedGene.objects.create(
+                job=job,
+                gene_name=gene_name,
+                matches=matches,
+                identity=ident,
+                coverage=cov,
+                classification=level
+            )
+
         messages.success(request, f"✅ Análisis completado: {identity}% identidad, {coverage}% cobertura")
         return redirect("resultados", pk=job.pk)
+
+
     except Exception as e:
+        # Manejo de errores
         job.status = "ERROR"
         job.raw_summary = str(e)
         job.save()
         messages.error(request, f"❌ Error en análisis: {e}")
         return redirect("sequence_detail", pk=seq.pk)
+
 @login_required
 def resultados(request, pk):
     job = get_object_or_404(AnalysisJob, pk=pk, sequence__owner=request.user)
@@ -184,3 +217,4 @@ def export_historial_csv(request):
         ])
 
     return response
+
