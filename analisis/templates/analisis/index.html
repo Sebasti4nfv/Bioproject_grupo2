@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Plataforma Bioinformática RAM</title>
+</head>
+<body>
+    <h1>Plataforma Bioinformática - Detección de Genes RAM</h1>
+    <form action="/analizar/" method="POST" enctype="multipart/form-data">
+        {% csrf_token %}
+        <label>Subir archivo FASTA:</label><br>
+        <input type="file" name="archivo" accept=".fasta,.fa" required>
+        <button type="submit">Analizar</button>
+    </form>
+
+    {% if error %}
+        <p style="color:red;">{{ error }}</p>
+    {% endif %}
+</body>
+</html>

@@ -1,0 +1,13 @@
+{% extends "analisis/base.html" %}
+{% block content %}
+<div class="container mt-5" style="max-width:400px;">
+  <h3 class="text-center mb-3">Iniciar sesión</h3>
+  {% if form.errors %}
+    <div class="alert alert-danger">Usuario o contraseña incorrectos.</div>
+  {% endif %}
+  <form method="post">{% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary w-100">Entrar</button>
+  </form>
+</div>
+{% endblock %}

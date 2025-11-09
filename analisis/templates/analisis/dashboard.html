@@ -1,0 +1,107 @@
+{% extends "analisis/base.html" %}
+{% block content %}
+<div class="container my-5">
+  <h2 class="mb-4 text-center">Panel de Control Bioinformático 🧬</h2>
+
+  <!-- KPIs -->
+  <div class="row text-center mb-4">
+    <div class="col-md-4">
+      <div class="card bg-primary text-white shadow">
+        <div class="card-body">
+          <h4>{{ total_sequences }}</h4>
+          <p>Secuencias cargadas</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-success text-white shadow">
+        <div class="card-body">
+          <h4>{{ total_jobs }}</h4>
+          <p>Análisis realizados</p>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-4">
+      <div class="card bg-info text-white shadow">
+        <div class="card-body">
+          <h4>{{ avg_identity }}%</h4>
+          <p>Identidad promedio</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Tabla de últimos análisis -->
+  <div class="card shadow mb-4">
+    <div class="card-header bg-dark text-white">
+      <h5 class="m-0">Últimos análisis</h5>
+    </div>
+    <div class="card-body">
+      {% if jobs %}
+      <table class="table table-hover align-middle">
+        <thead>
+          <tr>
+            <th>Secuencia</th>
+            <th>Identidad (%)</th>
+            <th>Cobertura (%)</th>
+            <th>Estado</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for job in jobs %}
+          <tr>
+            <td>{{ job.sequence.name }}</td>
+            <td>{{ job.identity_pct|default:"-" }}</td>
+            <td>{{ job.coverage_pct|default:"-" }}</td>
+            <td>
+              {% if job.status == "DONE" %}
+              <span class="badge bg-success">Completado</span>
+              {% elif job.status == "RUNNING" %}
+              <span class="badge bg-warning text-dark">Ejecutando</span>
+              {% else %}
+              <span class="badge bg-danger">Error</span>
+              {% endif %}
+            </td>
+            <td>{{ job.created_at|date:"d/m/Y H:i" }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <p class="text-center text-muted">Aún no hay análisis realizados.</p>
+      {% endif %}
+    </div>
+  </div>
+
+  <!-- Gráfico de identidad -->
+  <div class="card shadow mb-5">
+    <div class="card-header bg-dark text-white">
+      <h5 class="m-0">Distribución de identidad</h5>
+    </div>
+    <div class="card-body">
+      <canvas id="identityChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  const ctx = document.getElementById('identityChart');
+  const data = {
+    labels: [{% for job in jobs %}'{{ job.sequence.name }}',{% endfor %}],
+    datasets: [{
+      label: 'Identidad (%)',
+      data: [{% for job in jobs %}{{ job.identity_pct|default:0 }},{% endfor %}],
+      backgroundColor: 'rgba(54, 162, 235, 0.5)',
+      borderColor: 'rgba(54, 162, 235, 1)',
+      borderWidth: 2
+    }]
+  };
+  new Chart(ctx, {
+    type: 'bar',
+    data: data,
+    options: {scales: {y: {beginAtZero: true, max: 100}}}
+  });
+</script>
+{% endblock %}

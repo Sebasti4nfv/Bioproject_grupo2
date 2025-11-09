@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <style>
+    body { font-family: DejaVu Sans, sans-serif; margin: 40px; }
+    h2 { color: #1e88e5; text-align: center; }
+    table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background-color: #f2f2f2; }
+  </style>
+</head>
+<body>
+  <h2>Reporte Bioinformático - Análisis de Genes RAM</h2>
+  <p><strong>Secuencia:</strong> {{ job.sequence.name }}</p>
+  <p><strong>Identidad:</strong> {{ job.identity_pct }}%</p>
+  <p><strong>Cobertura:</strong> {{ job.coverage_pct }}%</p>
+  <p><strong>Resumen:</strong> {{ job.raw_summary }}</p>
+  <p><strong>Fecha:</strong> {{ job.created_at|date:"d/m/Y H:i" }}</p>
+  <br>
+  <p style="text-align:center;">Generado automáticamente por la plataforma BioinfoWeb 🧬</p>
+</body>
+</html>

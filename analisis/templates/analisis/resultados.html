@@ -1,0 +1,29 @@
+{% extends "analisis/base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <div class="card shadow-lg">
+    <div class="card-header bg-dark text-white">
+      <h4 class="m-0">🧬 Resultado del análisis</h4>
+    </div>
+    <div class="card-body">
+      <p><strong>Secuencia:</strong> {{ job.sequence.name }}</p>
+      <p><strong>Identidad:</strong> {{ job.identity_pct }}%</p>
+      <p><strong>Cobertura:</strong> {{ job.coverage_pct }}%</p>
+      <p><strong>Resumen:</strong> {{ job.raw_summary }}</p>
+      <p><strong>Fecha:</strong> {{ job.created_at|date:"d/m/Y H:i" }}</p>
+
+      {% if job.status == "DONE" %}
+        <div class="alert alert-success mt-3">✅ Análisis completado correctamente.</div>
+      {% else %}
+        <div class="alert alert-danger mt-3">❌ Hubo un error: {{ job.raw_summary }}</div>
+      {% endif %}
+
+      <div class="text-center mt-4">
+        <a href="{% url 'sequence_detail' job.sequence.pk %}" class="btn btn-primary">⬅ Volver al detalle</a>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary">🏠 Dashboard</a>
+        <a href="{% url 'exportar_pdf' job.pk %}" class="btn btn-danger mt-2">📄 Exportar a PDF</a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,16 @@
+{% extends "analisis/base.html" %}
+{% block content %}
+<div class="container mt-5" style="max-width:600px;">
+  <h3 class="mb-4 text-center">📤 Subir nueva secuencia FASTA</h3>
+  
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-success w-100 mt-3">Subir</button>
+  </form>
+
+  <div class="text-center mt-4">
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary">⬅ Volver al dashboard</a>
+  </div>
+</div>
+{% endblock %}

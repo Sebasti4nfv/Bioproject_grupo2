@@ -1,0 +1,48 @@
+{% extends "analisis/base.html" %}
+{% block content %}
+<div class="container mt-5">
+  <h3>📂 Detalle de la secuencia</h3>
+  <div class="card mb-4 shadow">
+    <div class="card-body">
+      <h5>{{ seq.name }}</h5>
+      <p><strong>Archivo:</strong> {{ seq.fasta_file.name }}</p>
+      <p><strong>Longitud:</strong> {{ seq.length_bp|default:"-" }} bases</p>
+      <p><strong>Fecha:</strong> {{ seq.created_at|date:"d/m/Y H:i" }}</p>
+      <a href="{% url 'run_analysis' seq.pk %}" class="btn btn-primary">🧬 Ejecutar análisis (DEMO)</a>
+    </div>
+  </div>
+
+  <h4>📈 Historial de análisis</h4>
+  {% if jobs %}
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>Fecha</th>
+        <th>Identidad (%)</th>
+        <th>Cobertura (%)</th>
+        <th>Estado</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for job in jobs %}
+      <tr>
+        <td>{{ job.created_at|date:"d/m/Y H:i" }}</td>
+        <td>{{ job.identity_pct|default:"-" }}</td>
+        <td>{{ job.coverage_pct|default:"-" }}</td>
+        <td>{{ job.status }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+    {% if job.pk %}
+        <a class="btn btn-sm btn-outline-dark" href="{% url 'resultados' job.pk %}">Ver resultado</a>
+    {% endif %}
+  </table>
+  {% else %}
+  <p class="text-muted">Aún no hay análisis realizados.</p>
+  {% endif %}
+
+  <div class="text-center mt-4">
+    <a href="{% url 'dashboard' %}" class="btn btn-secondary">⬅ Volver</a>
+  </div>
+</div>
+{% endblock %}
