@@ -1,3 +1,4 @@
+from django.db import models
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -6,22 +7,79 @@ from django.db.models import Q
 from django.utils.dateparse import parse_date
 from django.http import HttpResponse
 from .forms import SequenceUploadForm
-from .models import Sequence, AnalysisJob
+from .models import Sequence, AnalysisJob, DetectedGene
+from django.db.models.functions import TruncDate
+from django.db.models import Count
 from .services.analyzers import analyze_realistic
 from .services.reports import generar_pdf
+from .constants import HIGH_IDENTITY, HIGH_COVERAGE
 import csv
-
 
 @login_required
 def dashboard(request):
-    seqs = Sequence.objects.filter(owner=request.user).order_by("-created_at")
-    jobs = AnalysisJob.objects.filter(sequence__owner=request.user).order_by("-created_at")[:10]
-    kpis = {
-        "total_sequences": seqs.count(),
-        "total_jobs": AnalysisJob.objects.filter(sequence__owner=request.user).count(),
-        "avg_identity": round(AnalysisJob.objects.filter(sequence__owner=request.user, status="DONE").aggregate_avg("identity_pct") or 0, 2) if hasattr(AnalysisJob.objects, "aggregate_avg") else None
+    # Datos base
+    seqs = Sequence.objects.filter(owner=request.user)
+    jobs = AnalysisJob.objects.filter(sequence__owner=request.user)
+
+    # KPIs
+    total_sequences = seqs.count()
+    total_jobs = jobs.count()
+    total_genes = DetectedGene.objects.filter(job__in=jobs).count()
+
+    avg_identity = round(
+        jobs.filter(status="DONE").aggregate(models.Avg("identity_pct"))["identity_pct__avg"] or 0, 2
+    )
+    avg_coverage = round(
+        jobs.filter(status="DONE").aggregate(models.Avg("coverage_pct"))["coverage_pct__avg"] or 0, 2
+    )
+
+    high_risk = jobs.filter(risk_level="HIGH").count()
+    med_risk = jobs.filter(risk_level="MEDIUM").count()
+    low_risk = jobs.filter(risk_level="LOW").count()
+
+    # Inicializamos el diccionario antes de agregar los gráficos
+    context = {
+        "total_sequences": total_sequences,
+        "total_jobs": total_jobs,
+        "total_genes": total_genes,
+        "avg_identity": avg_identity,
+        "avg_coverage": avg_coverage,
+        "high_risk": high_risk,
+        "med_risk": med_risk,
+        "low_risk": low_risk,
     }
-    return render(request, "analisis/dashboard.html", {"seqs": seqs, "jobs": jobs, "kpis": kpis})
+
+    # 🔹 Distribución por clase antibiótica
+    genes_by_class = (
+        DetectedGene.objects.filter(job__in=jobs)
+        .values("antibiotic_class")
+        .annotate(total=models.Count("id"))
+        .order_by("-total")
+    )
+
+    # 🔹 Distribución por fuente (CARD / ResFinder)
+    genes_by_source = (
+        DetectedGene.objects.filter(job__in=jobs)
+        .values("source")
+        .annotate(total=models.Count("id"))
+        .order_by("-total")
+    )
+
+    # 🔹 Casos críticos por fecha
+    cases_by_date = (
+        jobs.filter(risk_level="HIGH")
+        .annotate(date=TruncDate("created_at"))
+        .values("date")
+        .annotate(count=Count("id"))
+        .order_by("date")
+    )
+
+    # Agregamos estos datos al contexto
+    context["genes_by_class"] = list(genes_by_class)
+    context["genes_by_source"] = list(genes_by_source)
+    context["cases_by_date"] = list(cases_by_date)
+
+    return render(request, "analisis/dashboard.html", context)
 
 @login_required
 def upload_sequence(request):
@@ -71,11 +129,15 @@ def run_analysis(request, pk):
         job.status = "DONE"
         job.save()
 
-        # 🔹 Guardar los genes detectados en la BD
+        # Guardar genes y evaluar riesgo
         from .models import DetectedGene
+        high_risk_found = False
+
         for g in gene_results:
-            gene_name, matches, ident, cov = g
-            # Clasificación básica según identidad promedio
+            # g = (gene_name, matches, ident, cov, source, abx_class)
+            gene_name, matches, ident, cov, source, abx_class = g
+
+            # Clasificación por identidad (visual)
             if ident >= 90:
                 level = "Alta resistencia"
             elif ident >= 60:
@@ -84,19 +146,28 @@ def run_analysis(request, pk):
                 level = "Baja resistencia"
             else:
                 level = "Sin resistencia"
+
+            # Reglas de alto riesgo (anomalía)
+            if ident >= HIGH_IDENTITY and cov >= HIGH_COVERAGE:
+                high_risk_found = True
+
             DetectedGene.objects.create(
                 job=job,
                 gene_name=gene_name,
+                source=source,
+                antibiotic_class=abx_class,
                 matches=matches,
                 identity=ident,
                 coverage=cov,
                 classification=level
             )
 
+        job.risk_level = "HIGH" if high_risk_found else ("MEDIUM" if identity>=60 else ("LOW" if identity>=30 else "NONE"))
+        job.save()
+
         messages.success(request, f"✅ Análisis completado: {identity}% identidad, {coverage}% cobertura")
         return redirect("resultados", pk=job.pk)
-
-
+    
     except Exception as e:
         # Manejo de errores
         job.status = "ERROR"
@@ -129,7 +200,9 @@ def historial(request):
     date_from = request.GET.get('date_from', '').strip()
     date_to = request.GET.get('date_to', '').strip()
     owner_scope = request.GET.get('owner_scope', 'mine')
-
+    
+    # ⚙️ Nuevo: filtro por nivel de riesgo
+    risk = request.GET.get('risk', '').upper()
     # Base queryset
     jobs = AnalysisJob.objects.select_related('sequence').order_by('-created_at')
 
@@ -146,7 +219,11 @@ def historial(request):
     # Filtro por estado
     if status in {'PENDING', 'RUNNING', 'DONE', 'ERROR'}:
         jobs = jobs.filter(status=status)
-
+        
+    # ⚙️ Nuevo: filtrar por riesgo si fue seleccionado
+    if risk in {'NONE', 'LOW', 'MEDIUM', 'HIGH'}:
+        jobs = jobs.filter(risk_level=risk)
+        
     # Filtro por fechas
     df = parse_date(date_from) if date_from else None
     dt = parse_date(date_to) if date_to else None
@@ -167,6 +244,7 @@ def historial(request):
         "date_from": date_from,
         "date_to": date_to,
         "owner_scope": owner_scope,
+        "risk": risk, # 🔽 Nuevo
     })
 
 

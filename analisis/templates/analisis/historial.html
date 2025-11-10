@@ -1,40 +1,53 @@
 {% extends "analisis/base.html" %}
 {% block content %}
 <div class="container my-4">
-  <h3 class="mb-3">📚 Historial de Análisis</h3>
+  <h3 class="mb-4">📊 Historial de Análisis</h3>
 
-  <!-- Filtros -->
-  <form class="row g-3 mb-3" method="get">
-    <div class="col-md-4">
-      <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Buscar por secuencia o resumen...">
-    </div>
-    <div class="col-md-2">
-      <select name="status" class="form-select">
-        <option value="">Estado (todos)</option>
-        <option value="PENDING" {% if status == "PENDING" %}selected{% endif %}>PENDING</option>
-        <option value="RUNNING" {% if status == "RUNNING" %}selected{% endif %}>RUNNING</option>
-        <option value="DONE" {% if status == "DONE" %}selected{% endif %}>DONE</option>
-        <option value="ERROR" {% if status == "ERROR" %}selected{% endif %}>ERROR</option>
-      </select>
-    </div>
-    <div class="col-md-2">
-      <input type="date" name="date_from" value="{{ date_from }}" class="form-control" placeholder="Desde">
-    </div>
-    <div class="col-md-2">
-      <input type="date" name="date_to" value="{{ date_to }}" class="form-control" placeholder="Hasta">
-    </div>
-    <div class="col-md-2">
-      <select name="owner_scope" class="form-select">
-        <option value="mine" {% if owner_scope != "all" %}selected{% endif %}>Mis análisis</option>
-        <option value="all" {% if owner_scope == "all" %}selected{% endif %}>Todos (admin)</option>
-      </select>
-    </div>
-    <div class="col-12 d-flex gap-2">
-      <button class="btn btn-primary">Filtrar</button>
-      <a class="btn btn-outline-secondary" href="{% url 'historial' %}">Limpiar</a>
-      <a class="btn btn-success" href="{% url 'export_historial_csv' %}?q={{ q }}&status={{ status }}&date_from={{ date_from }}&date_to={{ date_to }}&owner_scope={{ owner_scope }}">Exportar CSV</a>
-    </div>
-  </form>
+    <form method="get" class="card p-3 shadow-sm mb-4">
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label fw-bold">Buscar</label>
+          <input type="text" name="q" value="{{ q }}" class="form-control" placeholder="Secuencia o resumen...">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-bold">Estado</label>
+          <select name="status" class="form-select">
+            <option value="">Todos</option>
+            <option value="PENDING" {% if status == "PENDING" %}selected{% endif %}>Pendiente</option>
+            <option value="RUNNING" {% if status == "RUNNING" %}selected{% endif %}>En ejecución</option>
+            <option value="DONE" {% if status == "DONE" %}selected{% endif %}>Completado</option>
+            <option value="ERROR" {% if status == "ERROR" %}selected{% endif %}>Error</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-bold">Nivel de riesgo</label>
+          <select name="risk" class="form-select">
+            <option value="">Todos</option>
+            <option value="NONE" {% if risk == "NONE" %}selected{% endif %}>Sin riesgo</option>
+            <option value="LOW" {% if risk == "LOW" %}selected{% endif %}>Bajo</option>
+            <option value="MEDIUM" {% if risk == "MEDIUM" %}selected{% endif %}>Moderado</option>
+            <option value="HIGH" {% if risk == "HIGH" %}selected{% endif %}>Crítico</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-bold">Desde</label>
+          <input type="date" name="date_from" value="{{ date_from }}" class="form-control">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label fw-bold">Hasta</label>
+          <input type="date" name="date_to" value="{{ date_to }}" class="form-control">
+        </div>
+        <div class="col-md-1 d-flex gap-2">
+          <button type="submit" class="btn btn-primary w-100">Filtrar</button>
+        </div>
+      </div>
+
+      <div class="mt-3 d-flex justify-content-end gap-2">
+        <a href="{% url 'export_historial_csv' %}" class="btn btn-outline-success">⬇ Exportar CSV</a>
+        <a href="{% url 'historial' %}" class="btn btn-secondary">Limpiar</a>
+      </div>
+    </form>
+
 
   <!-- Tabla -->
   <div class="card shadow-sm">
@@ -49,6 +62,7 @@
               <th>Identidad (%)</th>
               <th>Cobertura (%)</th>
               <th>Acciones</th>
+              <th>Riesgo</th>
             </tr>
           </thead>
           <tbody>
@@ -73,6 +87,17 @@
               <td class="d-flex gap-2">
                 <a class="btn btn-sm btn-outline-primary" href="{% url 'sequence_detail' job.sequence.pk %}">Detalle</a>
                 <a class="btn btn-sm btn-outline-dark" href="{% url 'resultados' job.pk %}">Ver resultado</a>
+              </td>
+              <td>
+                {% if job.risk_level == "HIGH" %}
+                  <span class="badge bg-danger">Crítico</span>
+                {% elif job.risk_level == "MEDIUM" %}
+                  <span class="badge bg-warning text-dark">Moderado</span>
+                {% elif job.risk_level == "LOW" %}
+                  <span class="badge bg-info text-dark">Bajo</span>
+                {% else %}
+                  <span class="badge bg-success">Sin riesgo</span>
+                {% endif %}
               </td>
             </tr>
             {% endfor %}

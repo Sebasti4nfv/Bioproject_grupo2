@@ -1,27 +1,64 @@
 {% extends "analisis/base.html" %}
 {% block content %}
 <div class="container mt-5">
-  <div class="card shadow-lg">
-    <div class="card-header bg-dark text-white">
+
+  <!-- Banner de nivel de riesgo -->
+  {% if job.risk_level == "HIGH" %}
+  <div class="alert alert-danger d-flex align-items-center" role="alert">
+    <strong>⚠ Alta probabilidad de resistencia:</strong>&nbsp;
+    Se detectaron genes con identidad ≥ 90% y cobertura ≥ 80%.
+  </div>
+  {% elif job.risk_level == "MEDIUM" %}
+  <div class="alert alert-warning" role="alert">
+    <strong>Riesgo moderado:</strong> valores de identidad relevantes; revisar en detalle.
+  </div>
+  {% elif job.risk_level == "LOW" %}
+  <div class="alert alert-info" role="alert">
+    <strong>Riesgo bajo:</strong> coincidencias limitadas detectadas.
+  </div>
+  {% else %}
+  <div class="alert alert-success" role="alert">
+    <strong>Sin riesgo:</strong> no se detectaron patrones preocupantes.
+  </div>
+  {% endif %}
+
+  <!-- Encabezado -->
+  <div class="card shadow-lg mt-3">
+    <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
       <h4 class="m-0">🧬 Resultado del análisis</h4>
+      <span class="badge bg-light text-dark">
+        {{ job.created_at|date:"d/m/Y H:i" }}
+      </span>
     </div>
+
     <div class="card-body">
       <p><strong>Secuencia:</strong> {{ job.sequence.name }}</p>
-      <p><strong>Identidad:</strong> {{ job.identity_pct }}%</p>
-      <p><strong>Cobertura:</strong> {{ job.coverage_pct }}%</p>
-      <p><strong>Resumen:</strong> {{ job.raw_summary }}</p>
-      <p><strong>Fecha:</strong> {{ job.created_at|date:"d/m/Y H:i" }}</p>
+      <p><strong>Identidad promedio:</strong> {{ job.identity_pct }}%</p>
+      <p><strong>Cobertura promedio:</strong> {{ job.coverage_pct }}%</p>
 
-      {% if job.raw_summary %}
-        <pre style="background:#f8f9fa; padding:10px; border-radius:5px; white-space:pre-wrap;">{{ job.raw_summary }}</pre>
-      {% endif %}
+      <hr>
+      <p><strong>Resumen:</strong></p>
+      <pre style="background:#f8f9fa; padding:10px; border-radius:5px; white-space:pre-wrap;">
+{{ job.raw_summary }}
+      </pre>
+
+      <!-- Tabla de genes detectados -->
       {% if job.detected_genes.all %}
-        <h5 class="mt-4">🧬 Genes RAM Detectados</h5>
+        <h5 class="mt-4 mb-2">🧫 Genes RAM Detectados</h5>
+        <p class="mb-2">
+          <span class="badge bg-success">Sin riesgo</span>
+          <span class="badge bg-info text-dark">Bajo</span>
+          <span class="badge bg-warning text-dark">Moderado</span>
+          <span class="badge bg-danger">Crítico</span>
+        </p>
+
         <div class="table-responsive">
           <table class="table table-striped align-middle">
             <thead class="table-dark">
               <tr>
                 <th>Gen RAM</th>
+                <th>Fuente</th>
+                <th>Clase antibiótica</th>
                 <th>Coincidencias</th>
                 <th>Identidad (%)</th>
                 <th>Cobertura (%)</th>
@@ -32,9 +69,17 @@
               {% for g in job.detected_genes.all %}
               <tr>
                 <td><strong>{{ g.gene_name }}</strong></td>
+                <td>{{ g.source|default:"-" }}</td>
+                <td>{{ g.antibiotic_class|default:"-" }}</td>
                 <td>{{ g.matches }}</td>
-                <td>{{ g.identity|floatformat:2 }}</td>
-                <td>{{ g.coverage|floatformat:2 }}</td>
+                <td>
+                  {{ g.identity|floatformat:2 }}
+                  {% if g.identity >= 90 %}<span class="badge bg-danger ms-2">≥90%</span>{% endif %}
+                </td>
+                <td>
+                  {{ g.coverage|floatformat:2 }}
+                  {% if g.coverage >= 80 %}<span class="badge bg-danger ms-2">≥80%</span>{% endif %}
+                </td>
                 <td>
                   {% if g.classification == "Alta resistencia" %}
                     <span class="badge bg-danger">{{ g.classification }}</span>
@@ -56,15 +101,17 @@
           No se detectaron genes RAM en esta secuencia.
         </div>
       {% endif %}
+
       {% if job.status == "DONE" %}
         <div class="alert alert-success mt-3">✅ Análisis completado correctamente.</div>
       {% else %}
         <div class="alert alert-danger mt-3">❌ Hubo un error: {{ job.raw_summary }}</div>
       {% endif %}
-      
+
+      <!-- Botones -->
       <div class="text-center mt-4">
-        <a href="{% url 'sequence_detail' job.sequence.pk %}" class="btn btn-primary">⬅ Volver al detalle</a>
-        <a href="{% url 'dashboard' %}" class="btn btn-secondary">🏠 Dashboard</a>
+        <a href="{% url 'sequence_detail' job.sequence.pk %}" class="btn btn-primary me-2">⬅ Volver al detalle</a>
+        <a href="{% url 'dashboard' %}" class="btn btn-secondary me-2">🏠 Dashboard</a>
         <a href="{% url 'exportar_pdf' job.pk %}" class="btn btn-danger mt-2">📄 Exportar a PDF</a>
       </div>
     </div>

@@ -1,107 +1,168 @@
 {% extends "analisis/base.html" %}
 {% block content %}
-<div class="container my-5">
-  <h2 class="mb-4 text-center">Panel de Control Bioinformático 🧬</h2>
+<div class="container mt-5">
+
+  <h3 class="mb-4 text-center">📊 Panel de Monitoreo Bioinformático</h3>
 
   <!-- KPIs -->
   <div class="row text-center mb-4">
-    <div class="col-md-4">
-      <div class="card bg-primary text-white shadow">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-success">
         <div class="card-body">
-          <h4>{{ total_sequences }}</h4>
-          <p>Secuencias cargadas</p>
+          <h5 class="text-success fw-bold">🧬 Secuencias</h5>
+          <h3>{{ total_sequences }}</h3>
         </div>
       </div>
     </div>
-    <div class="col-md-4">
-      <div class="card bg-success text-white shadow">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-primary">
         <div class="card-body">
-          <h4>{{ total_jobs }}</h4>
-          <p>Análisis realizados</p>
+          <h5 class="text-primary fw-bold">🔍 Análisis</h5>
+          <h3>{{ total_jobs }}</h3>
         </div>
       </div>
     </div>
-    <div class="col-md-4">
-      <div class="card bg-info text-white shadow">
+    <div class="col-md-3">
+      <div class="card shadow-sm border-info">
         <div class="card-body">
-          <h4>{{ avg_identity }}%</h4>
-          <p>Identidad promedio</p>
+          <h5 class="text-info fw-bold">🧫 Genes RAM</h5>
+          <h3>{{ total_genes }}</h3>
+        </div>
+      </div>
+    </div>
+    <div class="col-md-3">
+      <div class="card shadow-sm border-danger">
+        <div class="card-body">
+          <h5 class="text-danger fw-bold">⚠ Casos Críticos</h5>
+          <h3>{{ high_risk }}</h3>
         </div>
       </div>
     </div>
   </div>
 
-  <!-- Tabla de últimos análisis -->
-  <div class="card shadow mb-4">
-    <div class="card-header bg-dark text-white">
-      <h5 class="m-0">Últimos análisis</h5>
+  <!-- Promedios -->
+  <div class="row text-center mb-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm border-secondary">
+        <div class="card-body">
+          <h6>Identidad promedio (%)</h6>
+          <h3 class="text-secondary fw-bold">{{ avg_identity }}</h3>
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      {% if jobs %}
-      <table class="table table-hover align-middle">
-        <thead>
-          <tr>
-            <th>Secuencia</th>
-            <th>Identidad (%)</th>
-            <th>Cobertura (%)</th>
-            <th>Estado</th>
-            <th>Fecha</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for job in jobs %}
-          <tr>
-            <td>{{ job.sequence.name }}</td>
-            <td>{{ job.identity_pct|default:"-" }}</td>
-            <td>{{ job.coverage_pct|default:"-" }}</td>
-            <td>
-              {% if job.status == "DONE" %}
-              <span class="badge bg-success">Completado</span>
-              {% elif job.status == "RUNNING" %}
-              <span class="badge bg-warning text-dark">Ejecutando</span>
-              {% else %}
-              <span class="badge bg-danger">Error</span>
-              {% endif %}
-            </td>
-            <td>{{ job.created_at|date:"d/m/Y H:i" }}</td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-      {% else %}
-      <p class="text-center text-muted">Aún no hay análisis realizados.</p>
-      {% endif %}
+    <div class="col-md-6">
+      <div class="card shadow-sm border-secondary">
+        <div class="card-body">
+          <h6>Cobertura promedio (%)</h6>
+          <h3 class="text-secondary fw-bold">{{ avg_coverage }}</h3>
+        </div>
+      </div>
     </div>
   </div>
 
-  <!-- Gráfico de identidad -->
-  <div class="card shadow mb-5">
-    <div class="card-header bg-dark text-white">
-      <h5 class="m-0">Distribución de identidad</h5>
+  <!-- Gráficos -->
+  <div class="row mt-4">
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white text-center">Distribución por Clase Antibiótica</div>
+        <div class="card-body">
+          <canvas id="classChart" height="200"></canvas>
+        </div>
+      </div>
     </div>
-    <div class="card-body">
-      <canvas id="identityChart"></canvas>
+    <div class="col-md-6">
+      <div class="card shadow-sm">
+        <div class="card-header bg-dark text-white text-center">Distribución por Fuente (CARD / ResFinder)</div>
+        <div class="card-body">
+          <canvas id="sourceChart" height="200"></canvas>
+        </div>
+      </div>
     </div>
   </div>
+
+  <div class="col-md-12 mt-4">
+  <div class="card shadow-sm">
+    <div class="card-header bg-dark text-white text-center">📈 Casos Críticos por Fecha</div>
+    <div class="card-body">
+      <canvas id="riskChart" height="120"></canvas>
+    </div>
+  </div>
+  </div>
+ 
 </div>
 
+<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
-  const ctx = document.getElementById('identityChart');
-  const data = {
-    labels: [{% for job in jobs %}'{{ job.sequence.name }}',{% endfor %}],
-    datasets: [{
-      label: 'Identidad (%)',
-      data: [{% for job in jobs %}{{ job.identity_pct|default:0 }},{% endfor %}],
-      backgroundColor: 'rgba(54, 162, 235, 0.5)',
-      borderColor: 'rgba(54, 162, 235, 1)',
-      borderWidth: 2
-    }]
-  };
-  new Chart(ctx, {
+  const classData = {{ genes_by_class|safe }};
+  const classLabels = classData.map(item => item.antibiotic_class || "Sin clase");
+  const classCounts = classData.map(item => item.total);
+
+  const ctx1 = document.getElementById('classChart');
+  new Chart(ctx1, {
     type: 'bar',
-    data: data,
-    options: {scales: {y: {beginAtZero: true, max: 100}}}
+    data: {
+      labels: classLabels,
+      datasets: [{
+        label: 'Genes detectados',
+        data: classCounts,
+        backgroundColor: 'rgba(54, 162, 235, 0.6)',
+        borderColor: 'rgba(54, 162, 235, 1)',
+        borderWidth: 1
+      }]
+    },
+    options: { responsive: true, scales: { y: { beginAtZero: true } } }
+  });
+
+  const sourceData = {{ genes_by_source|safe }};
+  const sourceLabels = sourceData.map(item => item.source || "Desconocido");
+  const sourceCounts = sourceData.map(item => item.total);
+
+  const ctx2 = document.getElementById('sourceChart');
+  new Chart(ctx2, {
+    type: 'pie',
+    data: {
+      labels: sourceLabels,
+      datasets: [{
+        label: 'Distribución por fuente',
+        data: sourceCounts,
+        backgroundColor: [
+          'rgba(255, 99, 132, 0.6)',
+          'rgba(75, 192, 192, 0.6)',
+        ],
+        borderColor: '#fff',
+        borderWidth: 1
+      }]
+    },
+    options: { responsive: true }
+  });
+</script>
+<script>
+  const riskData = {{ cases_by_date|safe }};
+  const dates = riskData.map(item => item.date);
+  const counts = riskData.map(item => item.count);
+
+  const ctx3 = document.getElementById('riskChart');
+  new Chart(ctx3, {
+    type: 'line',
+    data: {
+      labels: dates,
+      datasets: [{
+        label: 'Casos Críticos',
+        data: counts,
+        borderColor: 'rgba(255, 99, 132, 1)',
+        backgroundColor: 'rgba(255, 99, 132, 0.2)',
+        borderWidth: 2,
+        fill: true,
+        tension: 0.4,
+        pointRadius: 4
+      }]
+    },
+    options: {
+      scales: { y: { beginAtZero: true } },
+      responsive: true,
+      plugins: { legend: { position: 'top' } }
+    }
   });
 </script>
 {% endblock %}

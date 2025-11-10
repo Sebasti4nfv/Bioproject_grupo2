@@ -19,9 +19,13 @@ class AnalysisJob(models.Model):
     coverage_pct = models.FloatField(null=True, blank=True)
     raw_summary = models.TextField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+    RISK_CHOICES = (('NONE','Sin riesgo'), ('LOW','Bajo'), ('MEDIUM','Moderado'), ('HIGH','Crítico'))
+    risk_level = models.CharField(max_length=10, choices=RISK_CHOICES, default='NONE')
 class DetectedGene(models.Model):
     job = models.ForeignKey("AnalysisJob", on_delete=models.CASCADE, related_name="detected_genes")
     gene_name = models.CharField(max_length=100)
+    source = models.CharField(max_length=20, blank=True, null=True)
+    antibiotic_class = models.CharField(max_length=100, blank=True, null=True)
     matches = models.IntegerField(default=0)
     identity = models.FloatField(default=0)
     coverage = models.FloatField(default=0)
@@ -29,3 +33,17 @@ class DetectedGene(models.Model):
 
     def __str__(self):
         return f"{self.gene_name} ({self.identity}%, {self.coverage}%)"
+class ResistanceGene(models.Model):
+    SOURCE_CHOICES = [
+        ('CARD', 'CARD'),
+        ('ResFinder', 'ResFinder'),
+    ]
+    source = models.CharField(max_length=20, choices=SOURCE_CHOICES)
+    gene_name = models.CharField(max_length=100, unique=True)
+    sequence = models.TextField()  # Secuencia genética completa o representativa
+    antibiotic_class = models.CharField(max_length=100, blank=True, null=True)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.gene_name} ({self.source})"
+    # analisis/models.py
